@@ -1,7 +1,7 @@
 <?php 
 $current_page = basename($_SERVER['PHP_SELF']); 
 ?>
-<!DOCTYPE html>
+<!DOCTYPE html>     
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
