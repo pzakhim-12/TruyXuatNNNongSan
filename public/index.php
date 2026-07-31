@@ -43,16 +43,16 @@
                 <form class="space-y-4" id="form-create" onsubmit="event.preventDefault();">
                     <div>
                         <label class="block text-xs font-semibold text-gray-500 uppercase mb-1.5">Tên sản phẩm nông sản</label>
-                        <input type="text" value="Thanh Long Ruột Đỏ Bình Thuận" class="w-full bg-gray-50 border border-gray-300 rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition">
+                        <input type="text" id="product-name-input" value="Thanh Long Ruột Đỏ Bình Thuận" class="w-full bg-gray-50 border border-gray-300 rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition">
                     </div>
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-semibold text-gray-500 uppercase mb-1.5">Khối lượng (Tấn)</label>
-                            <input type="number" value="5" class="w-full bg-gray-50 border border-gray-300 rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition">
+                            <input type="number" id="product-weight-input" value="5" min="1" step="1" class="w-full bg-gray-50 border border-gray-300 rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition">
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-gray-500 uppercase mb-1.5">Mã vùng trồng</label>
-                            <input type="text" value="VN-BTH-082" class="w-full bg-gray-50 border border-gray-300 rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition">
+                            <input type="text" id="product-region-input" value="VN-BTH-082" class="w-full bg-gray-50 border border-gray-300 rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition">
                         </div>
                     </div>
                     <div class="flex space-x-2">
@@ -137,6 +137,37 @@
     let signer;
     let agrichainContract;
     let userAddress = "";
+
+    // -------------------------------------------------------------------------
+    // HÀM DÙNG CHUNG: Quét event theo từng đợt (chunk) để không bỏ sót lô hàng cũ
+    // Nhiều RPC free-tier chỉ cho quét tối đa ~9000-10000 block/lần, nên thay vì
+    // chỉ nhìn 9000 block gần nhất (làm lô hàng cũ "biến mất" theo thời gian),
+    // ta lùi dần từng đợt 9000 block cho tới khi hết lịch sử hoặc chạm maxChunks.
+    // -------------------------------------------------------------------------
+    async function queryEventsInChunks(contract, filter, currentProvider, chunkSize = 9000, maxChunks = 50) {
+        const currentBlock = await currentProvider.getBlockNumber();
+        let toBlock = currentBlock;
+        let allEvents = [];
+        let chunksQueried = 0;
+
+        while (toBlock >= 0 && chunksQueried < maxChunks) {
+            const fromBlock = Math.max(toBlock - chunkSize + 1, 0);
+            try {
+                const events = await contract.queryFilter(filter, fromBlock, toBlock);
+                allEvents = allEvents.concat(events);
+            } catch (err) {
+                console.warn(`Lỗi khi quét block ${fromBlock}-${toBlock}, dừng quét thêm:`, err);
+                break;
+            }
+            if (fromBlock === 0) break;
+            toBlock = fromBlock - 1;
+            chunksQueried++;
+        }
+
+        // Sắp xếp lại theo thứ tự thời gian tăng dần (giống thứ tự queryFilter gốc)
+        allEvents.sort((a, b) => a.blockNumber - b.blockNumber || a.logIndex - b.logIndex);
+        return allEvents;
+    }
 
     // -------------------------------------------------------------------------
     // HÀM KIỂM TRA IM LẶNG: Tự động nhận diện ví và theo dõi MetaMask
@@ -242,11 +273,8 @@
     // -------------------------------------------------------------------------
     async function loadDashboardStats() {
         try {
-            const currentBlock = await provider.getBlockNumber();
-            const startBlock = currentBlock - 9000; 
-
             const filter = agrichainContract.filters.ProductCreated();
-            const events = await agrichainContract.queryFilter(filter, startBlock > 0 ? startBlock : 0, "latest");
+            const events = await queryEventsInChunks(agrichainContract, filter, provider);
             
             const totalBatchesElement = document.getElementById('total-batches');
             if(totalBatchesElement) {
@@ -273,10 +301,25 @@
         const isConnected = await connectWallet();
         if (!isConnected) return;
 
-        const productName = document.querySelectorAll('input[type="text"]')[0].value;
-        const weight = document.querySelector('input[type="number"]').value;
-        const location = document.querySelectorAll('input[type="text"]')[2].value; 
-        
+        const productName = document.getElementById('product-name-input').value.trim();
+        const regionCode = document.getElementById('product-region-input').value.trim();
+        const rawLocation = document.getElementById('location-input').value.trim();
+        const weightRaw = document.getElementById('product-weight-input').value;
+
+        if (!productName || !rawLocation) {
+            Swal.fire({ icon: 'warning', title: 'Thiếu thông tin', text: 'Vui lòng nhập Tên sản phẩm và Vị trí!' });
+            return;
+        }
+
+        const weight = parseInt(weightRaw, 10);
+        if (!Number.isInteger(weight) || weight <= 0) {
+            Swal.fire({ icon: 'warning', title: 'Khối lượng không hợp lệ', text: 'Khối lượng (Tấn) phải là số nguyên dương!' });
+            return;
+        }
+
+        // Gộp mã vùng trồng vào vị trí vì contract chỉ nhận 4 tham số (không có ô riêng cho vùng trồng)
+        const location = regionCode ? `${rawLocation} (Vùng trồng: ${regionCode})` : rawLocation;
+
         const productId = "LOT-" + new Date().getTime(); 
 
         try {
@@ -368,7 +411,7 @@
 
             history.forEach((stage, index) => {
                 let date = new Date(stage.timestamp * 1000).toLocaleString('vi-VN');
-                let shortWallet = stage.handler.substring(0, 5) + '...' + stage.handler.substring(39);
+                let shortWallet = stage.handler.substring(0, 5) + '...' + stage.handler.substring(38);
                 let style = styles[index % styles.length];
 
                 timelineHTML += `
@@ -513,4 +556,4 @@
     }
 </script>
 
-<?php include 'footer.php'; ?>
+<?php include 'footer.php'; ?> 

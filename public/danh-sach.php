@@ -59,6 +59,34 @@
     let provider;
     let agrichainContract;
 
+    // -------------------------------------------------------------------------
+    // HÀM DÙNG CHUNG: Quét event theo từng đợt (chunk) để không bỏ sót lô hàng cũ
+    // (xem giải thích chi tiết trong index.php)
+    // -------------------------------------------------------------------------
+    async function queryEventsInChunks(contract, filter, currentProvider, chunkSize = 9000, maxChunks = 50) {
+        const currentBlock = await currentProvider.getBlockNumber();
+        let toBlock = currentBlock;
+        let allEvents = [];
+        let chunksQueried = 0;
+
+        while (toBlock >= 0 && chunksQueried < maxChunks) {
+            const fromBlock = Math.max(toBlock - chunkSize + 1, 0);
+            try {
+                const events = await contract.queryFilter(filter, fromBlock, toBlock);
+                allEvents = allEvents.concat(events);
+            } catch (err) {
+                console.warn(`Lỗi khi quét block ${fromBlock}-${toBlock}, dừng quét thêm:`, err);
+                break;
+            }
+            if (fromBlock === 0) break;
+            toBlock = fromBlock - 1;
+            chunksQueried++;
+        }
+
+        allEvents.sort((a, b) => a.blockNumber - b.blockNumber || a.logIndex - b.logIndex);
+        return allEvents;
+    }
+
     // 1. Hàm tự động kết nối ví để giữ màu cho Navbar (giống bên index.php)
     async function initWallet() {
         if (typeof window.ethereum !== 'undefined') {
@@ -101,12 +129,9 @@
             provider = new ethers.providers.Web3Provider(window.ethereum);
             agrichainContract = new ethers.Contract(contractAddress, contractABI, provider);
 
-            // Xử lý né lỗi 10000 blocks của RPC
-            const currentBlock = await provider.getBlockNumber();
-            const startBlock = currentBlock - 9000;
-            
+            // Quét theo từng đợt (chunk) để không bỏ sót lô hàng cũ hơn 9000 block
             const filter = agrichainContract.filters.ProductCreated();
-            const events = await agrichainContract.queryFilter(filter, startBlock > 0 ? startBlock : 0, "latest");
+            const events = await queryEventsInChunks(agrichainContract, filter, provider);
 
             const tbody = document.getElementById('table-body');
             
