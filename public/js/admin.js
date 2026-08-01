@@ -1,6 +1,3 @@
-// admin.js — Logic riêng cho trang admin.php (RBAC: cấp quyền / tra cứu quyền)
-// Cần load SAU config.js và utils.js.
-
 async function initWallet() {
     if (typeof window.ethereum !== 'undefined') {
         try {

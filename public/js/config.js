@@ -1,7 +1,3 @@
-// config.js — Cấu hình Smart Contract dùng chung cho toàn bộ dự án AgriChain
-// Đổi contract (deploy lại / chuyển máy khác) chỉ cần sửa DUY NHẤT file này,
-// không cần lục lại từng trang index.php / admin.php / danh-sach.php nữa.
-
 const contractAddress = "0x82bd170ad2a3ACb79Fe7262dDb710d823A731577";
 
 const contractABI = [

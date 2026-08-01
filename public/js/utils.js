@@ -1,26 +1,22 @@
-// utils.js — Các hàm & biến trạng thái dùng chung cho toàn bộ dự án AgriChain
-// Cần load SAU config.js (dùng contractAddress/contractABI) và TRƯỚC file JS riêng của từng trang.
-
-// -------------------------------------------------------------------------
 // BIẾN TRẠNG THÁI VÍ (dùng chung, các trang gán/đọc lại cùng 4 biến này)
-// -------------------------------------------------------------------------
+
 let provider;
 let signer;
 let agrichainContract;
 let userAddress = "";
 
-// -------------------------------------------------------------------------
+
 // Rút gọn địa chỉ ví dạng 0x82b...1577 — dùng chung để tránh lặp code
 // (và tránh lặp lại lỗi cắt sai ký tự do gõ tay substring nhiều nơi)
-// -------------------------------------------------------------------------
+
 function formatShortAddress(address) {
     if (!address || address.length < 10) return address;
     return address.substring(0, 5) + '...' + address.substring(38);
 }
 
-// -------------------------------------------------------------------------
+
 // Bản đồ roleCode -> {tên hiển thị, màu nút} dùng chung cho navbar mọi trang
-// -------------------------------------------------------------------------
+
 const ROLE_MAP = {
     0: { name: "Chưa phân quyền", color: "bg-gray-600" },
     1: { name: "Admin", color: "bg-red-600" },
@@ -45,9 +41,9 @@ function updateWalletNavbar(address, roleCode) {
     }
 }
 
-// -------------------------------------------------------------------------
+
 // Cấu hình toast thông báo trượt góc (SweetAlert2)
-// -------------------------------------------------------------------------
+
 const Toast = typeof Swal !== 'undefined' ? Swal.mixin({
     toast: true,
     position: 'top-end',
@@ -64,11 +60,11 @@ const Toast = typeof Swal !== 'undefined' ? Swal.mixin({
     }
 }) : null;
 
-// -------------------------------------------------------------------------
+
 // Quét event theo từng đợt (chunk) để không bỏ sót lô hàng cũ hơn giới hạn
 // RPC free-tier (~9000 block/lần). Lùi dần từng đợt cho tới khi hết lịch sử
 // hoặc chạm maxChunks.
-// -------------------------------------------------------------------------
+
 async function queryEventsInChunks(contract, filter, currentProvider, chunkSize = 9000, maxChunks = 50) {
     const currentBlock = await currentProvider.getBlockNumber();
     let toBlock = currentBlock;
@@ -93,10 +89,10 @@ async function queryEventsInChunks(contract, filter, currentProvider, chunkSize 
     return allEvents;
 }
 
-// -------------------------------------------------------------------------
+
 // Kết nối ví thủ công (hiện popup MetaMask xin quyền). Dùng chung vì nút
 // "Kết nối ví" nằm trong header.php nên xuất hiện ở MỌI trang.
-// -------------------------------------------------------------------------
+
 async function connectWallet() {
     if (typeof window.ethereum !== 'undefined') {
         try {

@@ -1,7 +1,4 @@
-// danh-sach.js — Logic riêng cho trang danh-sach.php (Danh sách lô hàng)
-// Cần load SAU config.js và utils.js.
-
-// 1. Hàm tự động kết nối ví để giữ màu cho Navbar (giống bên index.php)
+// 1. Hàm tự động kết nối ví để giữ màu cho Navbar 
 async function initWallet() {
     if (typeof window.ethereum !== 'undefined') {
         try {

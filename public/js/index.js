@@ -1,9 +1,5 @@
-// index.js — Logic riêng cho trang index.php (Dashboard, Tạo lô hàng, Tra cứu, Cập nhật)
-// Cần load SAU config.js và utils.js.
-
-// -------------------------------------------------------------------------
 // HÀM KIỂM TRA IM LẶNG: Tự động nhận diện ví và theo dõi MetaMask
-// -------------------------------------------------------------------------
+
 async function initWallet() {
     if (typeof window.ethereum !== 'undefined') {
         try {
@@ -39,9 +35,9 @@ async function initWallet() {
     }
 }
 
-// -------------------------------------------------------------------------
+
 // HÀM 2: QUÉT BLOCKCHAIN TỰ ĐỘNG ĐẾM
-// -------------------------------------------------------------------------
+
 async function loadDashboardStats() {
     try {
         const filter = agrichainContract.filters.ProductCreated();
@@ -65,9 +61,9 @@ async function loadDashboardStats() {
     }
 }
 
-// -------------------------------------------------------------------------
+
 // HÀM 3: KHỞI TẠO LÔ HÀNG (FARMER)
-// -------------------------------------------------------------------------
+
 async function handleCreateProduct() {
     const isConnected = await connectWallet();
     if (!isConnected) return;
@@ -127,9 +123,9 @@ async function handleCreateProduct() {
     }
 }
 
-// -------------------------------------------------------------------------
+
 // HÀM 4: QUÉT MÃ QR (TRUY XUẤT NGUỒN GỐC)
-// -------------------------------------------------------------------------
+
 async function handleSearchProduct() {
     const searchInput = document.getElementById('search-input').value.trim();
 
@@ -212,9 +208,9 @@ async function handleSearchProduct() {
     }
 }
 
-// -------------------------------------------------------------------------
+
 // HÀM 5: CẬP NHẬT TRẠNG THÁI (INSPECTOR, LOGISTICS)
-// -------------------------------------------------------------------------
+
 async function handleUpdateStatus() {
     const id = document.getElementById('update-id').value.trim();
     const action = document.getElementById('update-action').value;
@@ -250,9 +246,9 @@ async function handleUpdateStatus() {
     }
 }
 
-// -------------------------------------------------------------------------
+
 // LẤY GPS (không liên quan blockchain — thuần browser API)
-// -------------------------------------------------------------------------
+
 function getGPSLocation() {
     const locationInput = document.getElementById('location-input');
 
@@ -289,9 +285,9 @@ function getGPSLocation() {
     }
 }
 
-// -------------------------------------------------------------------------
+
 // GẮN SỰ KIỆN KHI TRANG LOAD XONG
-// -------------------------------------------------------------------------
+
 document.addEventListener("DOMContentLoaded", () => {
     initWallet();
 
